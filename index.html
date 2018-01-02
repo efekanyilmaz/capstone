@@ -1,0 +1,179 @@
+<html>
+
+<head>
+  <title>Augmented Reality Marker Detector</title>
+  <script src="is.js"></script>
+  <script type="text/javascript" src="libs/polyfill.js"></script> 
+  <script type="text/javascript" src="cv.js"></script>
+  <script type="text/javascript" src="svd.js"></script>
+  <script type="text/javascript" src="posit.js"></script>
+  <script type="text/javascript" src="aruco.js"></script> 
+
+  <script>
+    var video, canvas, context, imageData, detector, posit;
+    var modelSize = 35.0;
+    function onLoad(){
+      video = document.getElementById("video");
+      canvas = document.getElementById("canvas");
+      canvas2 = document.getElementById("canvas2");
+      context = canvas.getContext("2d");
+      context2 = canvas2.getContext("2d");
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      canvas2.width = window.innerWidth;
+      canvas2.height = window.innerHeight;
+
+      navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+      if (navigator.getUserMedia){
+        
+        function successCallback(stream){
+          if (window.URL) {
+            video.src = window.webkitURL.createObjectURL(stream);
+          } else if (video.mozSrcObject !== undefined) {
+            video.mozSrcObject = stream;
+          } else {
+            video.src = stream;
+          }
+        }
+        
+        function errorCallback(error){
+        }
+        if(is.mobile()) {
+          navigator.mediaDevices.enumerateDevices().then(
+            function(devices) {
+              for (var i = 0; i < devices.length; i++) {
+                if (devices[i].kind == 'videoinput' && devices[i].label.indexOf('back') !== -1) {
+                  var constraints =  {
+                    video: {
+                      optional: [{sourceId: devices[i].deviceId}], 
+                    }
+                  };
+                  navigator.getUserMedia(constraints, successCallback, errorCallback);
+                }
+              }
+            }
+          ); 
+        } else {
+          navigator.getUserMedia({video: true}, successCallback, errorCallback);
+        }
+        
+        detector = new AR.Detector();
+        posit = new POS.Posit(modelSize, canvas.width);
+
+        requestAnimationFrame(tick);
+      }
+    }
+    
+    function tick(){
+      requestAnimationFrame(tick);
+      if (video.readyState === video.HAVE_ENOUGH_DATA){
+        snapshot();
+          context2.drawImage(video, 0, 0, canvas.width, canvas.height);
+          var markers = detector.detect(imageData);
+          drawCorners(markers);
+          drawId(markers);
+      }
+    }
+
+    function snapshot(){
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+    }
+          
+    function drawCorners(markers){
+      var corners, corner, i, j;
+    
+      context.lineWidth = 3;
+
+      for (i = 0; i !== markers.length; ++ i){
+        corners = markers[i].corners;
+        
+        context.strokeStyle = "red";
+        context.beginPath();
+        
+        for (j = 0; j !== corners.length; ++ j){
+          corner = corners[j];
+          context.moveTo(corner.x, corner.y);
+          corner = corners[(j + 1) % corners.length];
+          context.lineTo(corner.x, corner.y);
+        }
+
+        context.stroke();
+        context.closePath();
+        
+        context.strokeStyle = "green";
+        context.strokeRect(corners[0].x - 2, corners[0].y - 2, 4, 4);
+      }
+    }
+
+    function drawId(markers){
+      var corners, corner, x, y, i, j;
+      
+      context.strokeStyle = "blue";
+      context.lineWidth = 1;
+      
+      for (i = 0; i !== markers.length; ++ i){
+        corners = markers[i].corners;
+        x = Infinity;
+        y = Infinity;
+        console.log(corners);
+        for (j = 0; j !== corners.length; ++ j){
+          corner = corners[j];
+          x = Math.min(x, corner.x);
+          y = Math.min(y, corner.y);
+        }
+        bauLogo = document.getElementById('bau');
+        chestLogo = document.getElementById('chest')
+        monsterLogo = document.getElementById('monster')
+        eifelLogo = document.getElementById('eifel')
+        pose = posit.pose(markers[i].corners);
+        rotation = pose.alternativeRotation;
+        var roll = Math.atan2(rotation[1][0], rotation[1][1]);
+        deg = Math.round(roll * 180.0/Math.PI);
+        switch (markers[i].id) {
+            // we have some marker id's = 20, 25, 48, 127;
+            case 127:
+            context.drawImage(bauLogo, corners[2].x, corners[2].y, corners[0].x - corners[1].x, corners[0].y - corners[3].y)
+            break;
+            case 48:
+            context.drawImage(monster, corners[2].x, corners[2].y, corners[0].x - corners[1].x, corners[0].y - corners[3].y)
+            break;
+            case 20: 
+            context.drawImage(eifelLogo, corners[2].x, corners[2].y, corners[0].x - corners[1].x, corners[0].y - corners[3].y)
+            break;
+            case 25: 
+            context.drawImage(chestLogo, corners[2].x, corners[2].y, corners[0].x - corners[1].x, corners[0].y - corners[3].y)
+            break;
+        }
+        context.strokeText(markers[i].id, x, y)
+
+      }
+    }
+
+    window.onload = onLoad;
+  </script>
+  <style>
+    * { margin:0; padding:0; } /* to remove the top and left whitespace */
+    html, body { width:100%; height:100%; background: black} /* just to be sure these are full screen*/
+    canvas { display:block; } /* To remove the scrollbars */
+    #container { display: flex; flex-direction: row; justify-content: flex-start; }
+  </style>
+</head>
+
+<body style="font-family: monospace;">
+  <div id="container">
+    <video id="video" autoplay="true" style="display: none;"></video>
+    <canvas id="canvas" style="height: 100vh; 
+    width: 50vw; 
+    display: block;"></canvas>
+    <canvas id="canvas2" style="height: 100vh; 
+    width: 50vw; 
+    display: block;"></canvas>
+    </div>
+    <img src="img/bau.png" id="bau" style="display: none" width="100" height="100" alt="">
+    <img src="img/monster.png" id="monster" style="display: none" width="100" height="100" alt="">
+    <img src="img/chest.png" id="chest" style="display: none" width="100" height="100" alt="">
+    <img src="img/eifel.png" id="eifel" style="display: none" width="100" height="100" alt="">
+</body>
+  
+</html>
