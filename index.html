@@ -14,12 +14,16 @@
     var modelSize = 35.0;
     function onLoad(){
       video = document.getElementById("video");
+
       canvas = document.getElementById("canvas");
       canvas2 = document.getElementById("canvas2");
+      
       context = canvas.getContext("2d");
       context2 = canvas2.getContext("2d");
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
+      
+      canvas.width = 620;
+      canvas.height = 420;
+      
       canvas2.width = window.innerWidth;
       canvas2.height = window.innerHeight;
 
@@ -58,8 +62,6 @@
         }
         
         detector = new AR.Detector();
-        posit = new POS.Posit(modelSize, canvas.width);
-
         requestAnimationFrame(tick);
       }
     }
@@ -68,11 +70,11 @@
       requestAnimationFrame(tick);
       if (video.readyState === video.HAVE_ENOUGH_DATA){
         snapshot();
-          context2.drawImage(video, 0, 0, canvas.width, canvas.height);
-          var markers = detector.detect(imageData);
-          console.log(markers);
-          drawCorners(markers);
-          drawId(markers);
+        markers = detector.detect(imageData);
+        console.log(detector);
+        drawCorners(markers);
+        drawId(markers);
+        context2.drawImage(canvas, 0, 0, canvas2.width, canvas2.height);
       }
     }
 
@@ -117,7 +119,6 @@
         corners = markers[i].corners;
         x = Infinity;
         y = Infinity;
-        console.log(corners);
         for (j = 0; j !== corners.length; ++ j){
           corner = corners[j];
           x = Math.min(x, corner.x);
@@ -127,10 +128,7 @@
         chestLogo = document.getElementById('chest')
         monsterLogo = document.getElementById('monster')
         eifelLogo = document.getElementById('eifel')
-        pose = posit.pose(markers[i].corners);
-        rotation = pose.alternativeRotation;
-        var roll = Math.atan2(rotation[1][0], rotation[1][1]);
-        deg = Math.round(roll * 180.0/Math.PI);
+
         switch (markers[i].id) {
             // we have some marker id's = 20, 25, 48, 127;
             case 127:
@@ -141,22 +139,21 @@
             break;
             case 20: 
             context.drawImage(eifelLogo, corners[2].x, corners[2].y, corners[0].x - corners[1].x, corners[0].y - corners[3].y)
-            break;
+            break;z
             case 25: 
             context.drawImage(chestLogo, corners[2].x, corners[2].y, corners[0].x - corners[1].x, corners[0].y - corners[3].y)
             break;
         }
         context.strokeText(markers[i].id, x, y)
-
       }
     }
 
     window.onload = onLoad;
   </script>
   <style>
-    * { margin:0; padding:0; } /* to remove the top and left whitespace */
-    html, body { width:100%; height:100%; background: black} /* just to be sure these are full screen*/
-    canvas { display:block; } /* To remove the scrollbars */
+    * { margin:0; padding:0; }
+    html, body { width:100%; height:100%; background: black}
+    canvas { display:block; }
     #container { display: flex; flex-direction: row; justify-content: flex-start; }
   </style>
 </head>
